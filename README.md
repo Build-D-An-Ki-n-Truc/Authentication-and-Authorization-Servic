@@ -1,0 +1,1 @@
+Auth service using NodeJS with express + TypeScript
