@@ -10,3 +10,10 @@ export const generateToken = (payload: any) => {
         {expiresIn: '1h'},
     )
 }
+
+export const verifyToken = (token: string) => {
+    return jwt.verify(
+        token,
+        secret,
+    )
+}
