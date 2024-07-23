@@ -2,63 +2,64 @@ package jwt
 
 import (
 	"fmt"
-	"log"
+	"time"
 
-	"github.com/nats-io/jwt/v2"
-	"github.com/nats-io/nkeys"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/Build-D-An-Ki-n-Truc/auth/internal/config"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-func GenerateToken() {
-	log.SetFlags(0)
+// Global config variable
 
-	operatorKP, _ := nkeys.CreateOperator()
+// generateToken generates a JWT for the given username and role.
+func generateToken(username string, role string) (string, error) {
+	var cfg = config.LoadConfig()
+	// Define the claim
+	claim := jwt.MapClaims{
+		"username": username,
+		"role":     role,
+		"exp":      time.Now().Add(time.Hour * 1).Unix(),
+	}
 
-	operatorPub, _ := operatorKP.PublicKey()
-	fmt.Printf("operator pubkey: %s\n", operatorPub)
+	// Create the token
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claim)
 
-	operatorSeed, _ := operatorKP.Seed()
-	fmt.Printf("operator seed: %s\n\n", string(operatorSeed))
+	// Sign the token
+	tokenString, err := token.SignedString(cfg.Secret)
 
-	accountKP, _ := nkeys.CreateAccount()
+	if err != nil {
+		log.Println("Error creating token: ", err)
+		return "", err
+	}
 
-	accountPub, _ := accountKP.PublicKey()
-	fmt.Printf("account pubkey: %s\n", accountPub)
-
-	accountSeed, _ := accountKP.Seed()
-	fmt.Printf("account seed: %s\n", string(accountSeed))
-
-	accountClaims := jwt.NewAccountClaims(accountPub)
-	accountClaims.Name = "my-account"
-
-	accountClaims.Limits.JetStreamLimits.DiskStorage = -1
-	accountClaims.Limits.JetStreamLimits.MemoryStorage = -1
-
-	fmt.Printf("account claims: %s\n", accountClaims)
-
-	accountJWT, _ := accountClaims.Encode(operatorKP)
-	fmt.Printf("account jwt: %s\n\n", accountJWT)
-
-	userKP, _ := nkeys.CreateUser()
-
-	userPub, _ := userKP.PublicKey()
-	fmt.Printf("user pubkey: %s\n", userPub)
-
-	userSeed, _ := userKP.Seed()
-	fmt.Printf("user seed: %s\n", string(userSeed))
-
-	userClaims := jwt.NewUserClaims(userPub)
-	userClaims.Name = "my-user"
-
-	userClaims.Limits.Data = 1024 * 1024 * 1024
-
-	userClaims.Permissions.Pub.Allow.Add("foo.>", "bar.>")
-	userClaims.Permissions.Sub.Allow.Add("_INBOX.>")
-
-	fmt.Printf("userclaims: %s\n", userClaims)
-
-	userJWT, _ := userClaims.Encode(accountKP)
-	fmt.Printf("user jwt: %s\n", userJWT)
-
-	creds, _ := jwt.FormatUserConfig(userJWT, userSeed)
-	fmt.Printf("creds file: %s\n", creds)
+	return tokenString, nil
 }
+
+// verifyToken verifies the given JWT token string.
+func verifyToken(tokenString string) (jwt.MapClaims, error) {
+	var cfg = config.LoadConfig()
+	// Parse the token
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Validate the signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(cfg.Secret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract the claims
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, fmt.Errorf("invalid token")
+}
+
+// func getToken() (string, error){
+
+// }
