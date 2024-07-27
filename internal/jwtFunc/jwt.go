@@ -1,4 +1,4 @@
-package jwt
+package jwtFunc
 
 import (
 	"fmt"
@@ -12,10 +12,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Global config variable
-
 // generateToken generates a JWT for the given username and role.
-func generateToken(username string, role string) (string, error) {
+func GenerateToken(username string, role string) (string, error) {
 	var cfg = config.LoadConfig()
 	// Define the claim
 	claim := jwt.MapClaims{
@@ -39,7 +37,7 @@ func generateToken(username string, role string) (string, error) {
 }
 
 // verifyToken verifies the given JWT token string.
-func verifyToken(tokenString string) (jwt.MapClaims, error) {
+func VerifyToken(tokenString string) (jwt.MapClaims, error) {
 	var cfg = config.LoadConfig()
 	// Parse the token
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -63,7 +61,9 @@ func verifyToken(tokenString string) (jwt.MapClaims, error) {
 }
 
 // getTokenFromRequest extracts the JWT from the Authorization header of the NATS request.
-func getTokenFromRequest(m *nats.Msg) (string, error) {
+func GetTokenFromRequest(m *nats.Msg) (string, error) {
+
+	// Fix later : Token will in header with the bearer name
 	// Get the Authorization header
 	authHeader := m.Header.Get("Authorization")
 	if authHeader == "" {
