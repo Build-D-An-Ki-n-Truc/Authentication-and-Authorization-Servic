@@ -1,6 +1,7 @@
 package jwtFunc
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -23,10 +24,14 @@ func GenerateToken(username string, role string) (string, error) {
 	}
 
 	// Create the token
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claim)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 
 	// Sign the token
-	tokenString, err := token.SignedString(cfg.Secret)
+	hmacSecret, err := base64.StdEncoding.DecodeString(cfg.Secret)
+	if err != nil {
+		log.Panic("Error decoding Base64 string:", err)
+	}
+	tokenString, err := token.SignedString(hmacSecret)
 
 	if err != nil {
 		log.Println("Error creating token: ", err)

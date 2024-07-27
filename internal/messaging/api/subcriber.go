@@ -82,27 +82,26 @@ type Response struct {
 	Payload       Payload           `json:"payload"`
 }
 
-func createSubscriptionString(service, endpoint, method string) string {
-	return fmt.Sprintf(`{"service":"%s","endpoint":"%s","method":"%s"}`, service, endpoint, method)
+func createSubscriptionString(endpoint, method, service string) string {
+	return fmt.Sprintf(`{"endpoint":"%s","method":"%s","service":"%s"}`, endpoint, method, service)
 }
 
 // Login Subcriber for attaching token to user
 func LoginSubcriber(nc *nats.Conn) {
-	subject := createSubscriptionString("auth", "login", "POST")
-	var request Request
+	subject := createSubscriptionString("login", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
-
+		var request Request
 		// parsing message to Request format
 		unmarshalErr := json.Unmarshal(m.Data, &request)
-
+		fmt.Println(m.Data)
 		if unmarshalErr != nil {
 			logrus.Panic(unmarshalErr)
 		} else {
-
 			// Get username and passwrod from user payload
 			username := string(request.Data.Payload.Data["username"])
 			password := string(request.Data.Payload.Data["password"])
-
+			fmt.Println("username: " + username)
+			fmt.Println("password: " + password)
 			role, check := auth.Login(username, password)
 
 			// Login successfully
@@ -156,6 +155,26 @@ func LoginSubcriber(nc *nats.Conn) {
 	})
 
 	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func TestSub(nc *nats.Conn) {
+	if _, err := nc.Subscribe(`{"endpoint":"login","method":"GET","service":"auth"}`, func(m *nats.Msg) {
+		response := Response{
+			Payload: Payload{
+				Type:   []string{"info"},
+				Status: http.StatusOK,
+				Data: map[string]string{
+					"hehe": "hehe",
+				},
+			},
+		}
+
+		message, _ := json.Marshal(response)
+		m.Respond(message)
+
+	}); err != nil {
 		log.Fatal(err)
 	}
 }
