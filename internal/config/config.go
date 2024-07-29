@@ -18,6 +18,7 @@ type Config struct {
 // Singleton Pattern
 var lock = &sync.Mutex{}
 
+// Will change to package-level variable later
 var cfg *Config
 
 func LoadConfig() *Config {

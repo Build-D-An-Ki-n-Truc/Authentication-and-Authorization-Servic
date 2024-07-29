@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Message Pattern
 /*
 	{
 	  "pattern": {
@@ -58,7 +59,6 @@ type Payload struct {
 	Data   map[string]string `json:"data"`
 }
 
-// Struct for a Response
 type Data struct {
 	Headers       Header            `json:"headers"`
 	Authorization Authorization     `json:"authorization"`
@@ -86,9 +86,14 @@ func createSubscriptionString(endpoint, method, service string) string {
 	return fmt.Sprintf(`{"endpoint":"%s","method":"%s","service":"%s"}`, endpoint, method, service)
 }
 
+func RegisterSubcriber(nc *nats.Conn) {
+	//subject := createSubscriptionString("register/user", "POST", "auth")
+
+}
+
 // Login Subcriber for attaching token to user
 func LoginSubcriber(nc *nats.Conn) {
-	subject := createSubscriptionString("login", "POST", "auth")
+	subject := createSubscriptionString("login/user", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
@@ -115,7 +120,6 @@ func LoginSubcriber(nc *nats.Conn) {
 
 				response := Response{
 					Headers: Header{
-						ContentType:   "application/json",
 						Authorization: "Bearer " + token,
 					},
 					Authorization: Authorization{
@@ -126,7 +130,7 @@ func LoginSubcriber(nc *nats.Conn) {
 					},
 					Payload: Payload{
 						Type:   []string{"info"},
-						Status: http.StatusOK,
+						Status: http.StatusAccepted,
 						Data: map[string]string{
 							"Login": "Success",
 						},
@@ -134,11 +138,8 @@ func LoginSubcriber(nc *nats.Conn) {
 				}
 				message, _ := json.Marshal(response)
 				m.Respond(message)
-			} else {
+			} else { // login failed
 				response := Response{
-					Headers: Header{
-						ContentType: "application/json",
-					},
 					Payload: Payload{
 						Type:   []string{"info"},
 						Status: http.StatusOK,
@@ -155,26 +156,6 @@ func LoginSubcriber(nc *nats.Conn) {
 	})
 
 	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func TestSub(nc *nats.Conn) {
-	if _, err := nc.Subscribe(`{"endpoint":"login","method":"GET","service":"auth"}`, func(m *nats.Msg) {
-		response := Response{
-			Payload: Payload{
-				Type:   []string{"info"},
-				Status: http.StatusOK,
-				Data: map[string]string{
-					"hehe": "hehe",
-				},
-			},
-		}
-
-		message, _ := json.Marshal(response)
-		m.Respond(message)
-
-	}); err != nil {
 		log.Fatal(err)
 	}
 }

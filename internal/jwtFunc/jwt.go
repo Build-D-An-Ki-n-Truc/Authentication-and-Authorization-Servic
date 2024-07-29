@@ -3,19 +3,19 @@ package jwtFunc
 import (
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
+var cfg = config.LoadConfig()
+
 // generateToken generates a JWT for the given username and role.
 func GenerateToken(username string, role string) (string, error) {
-	var cfg = config.LoadConfig()
+
 	// Define the claim
 	claim := jwt.MapClaims{
 		"username": username,
@@ -41,9 +41,8 @@ func GenerateToken(username string, role string) (string, error) {
 	return tokenString, nil
 }
 
-// verifyToken verifies the given JWT token string.
-func VerifyToken(tokenString string) (jwt.MapClaims, error) {
-	var cfg = config.LoadConfig()
+// ExtractToken extract claims from the given JWT token string.
+func ExtractToken(tokenString string) (jwt.MapClaims, error) {
 	// Parse the token
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Validate the signing method
@@ -63,24 +62,4 @@ func VerifyToken(tokenString string) (jwt.MapClaims, error) {
 	}
 
 	return nil, fmt.Errorf("invalid token")
-}
-
-// getTokenFromRequest extracts the JWT from the Authorization header of the NATS request.
-func GetTokenFromRequest(m *nats.Msg) (string, error) {
-
-	// Fix later : Token will in header with the bearer name
-	// Get the Authorization header
-	authHeader := m.Header.Get("Authorization")
-	if authHeader == "" {
-		return "", fmt.Errorf("authorization header missing")
-	}
-
-	// Split the header to get the token part
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return "", fmt.Errorf("invalid authorization header format")
-	}
-
-	// Return the token part
-	return parts[1], nil
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/hashing"
 )
 
-// find hashedPassword with username in Database
+// Check for username and password in corresponding database. Return Role and True if password correct, False otherwise
 func Login(username string, password string) (string, bool) {
 	// sample password until have database
 	hashedPassword := "$2a$10$1En6mrfnzK6PqAlRch5MzuP1k3e3gBcEvIYG4t8Zyayalx14Xs.Lu"
