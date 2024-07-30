@@ -85,16 +85,9 @@ func createSubscriptionString(endpoint, method, service string) string {
 	return fmt.Sprintf(`{"endpoint":"%s","method":"%s","service":"%s"}`, endpoint, method, service)
 }
 
-func RegisterSubcriber(nc *nats.Conn) {
-	//subject := createSubscriptionString("register/user", "POST", "auth")
-
-}
-
 // Subcriber for login, Payload should have data:
 //
 //	Payload: Payload{
-//		Type:   []string{"info"},
-//		Status: http.StatusOK,
 //		Data:   {
 //			"username": "username",
 //			"password": "password",
@@ -102,7 +95,6 @@ func RegisterSubcriber(nc *nats.Conn) {
 //	},
 //
 // ["roleRequired"] Ex: ["admin", "user","brand"]
-
 func LoginSubcriber(nc *nats.Conn) {
 	subjectUser := createSubscriptionString("login/user", "POST", "auth")
 	subjectAdmin := createSubscriptionString("login/admin", "POST", "auth")
@@ -235,9 +227,7 @@ func LoginSubcriber(nc *nats.Conn) {
 // Subcriber for verifying token, Payload should have data:
 //
 //	Payload: Payload{
-//		Type:   []string{"info"},
-//		Status: http.StatusOK,
-//		Data:   ["roleRequired"] Ex: ["admin", "user","brand"]
+//		Data:   ["roleRequired"] Ex: ["admin","user","brand"]
 //	},
 //
 // ["roleRequired"] Ex: ["admin", "user","brand"]
@@ -250,7 +240,7 @@ func VerifySubcriber(nc *nats.Conn) {
 		if unmarshalErr != nil {
 			logrus.Panic(unmarshalErr)
 		} else {
-			token := request.Data.Headers.Authorization
+			token := request.Data.Headers.Authorization[7:]
 			username := request.Data.Authorization.User.Username
 			role := request.Data.Authorization.User.Role
 
@@ -290,4 +280,8 @@ func VerifySubcriber(nc *nats.Conn) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func RegisterSubcriber(nc *nats.Conn) {
+	//subject := createSubscriptionString("register/user", "POST", "auth")
 }
