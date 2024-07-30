@@ -37,6 +37,7 @@ func InitializeMongoDBClient() error {
 
 	Client = client
 	return nil
+
 }
 
 // Disconnect from MongoDB
