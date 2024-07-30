@@ -29,5 +29,3 @@ type BrandUser struct {
 	Name     string             `bson:"name" json:"name"`
 	Field    string             `bson:"field" json:"field"`
 }
-
-//
