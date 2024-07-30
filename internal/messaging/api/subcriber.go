@@ -39,7 +39,6 @@ type Pattern struct {
 }
 
 type Header struct {
-	ContentType   string `json:"Content-Type"`
 	Authorization string `json:"Authorization"`
 }
 
@@ -54,9 +53,9 @@ type Authorization struct {
 
 // In Data should have username and password for login
 type Payload struct {
-	Type   []string          `json:"type"`
-	Status int               `json:"status"`
-	Data   map[string]string `json:"data"`
+	Type   []string    `json:"type"`
+	Status int         `json:"status"`
+	Data   interface{} `json:"data"`
 }
 
 type Data struct {
@@ -91,20 +90,32 @@ func RegisterSubcriber(nc *nats.Conn) {
 
 }
 
-// Login Subcriber for attaching token to user
+// Subcriber for login, Payload should have data:
+//
+//	Payload: Payload{
+//		Type:   []string{"info"},
+//		Status: http.StatusOK,
+//		Data:   {
+//			"username": "username",
+//			"password": "password",
+//		},
+//	},
+//
+// ["roleRequired"] Ex: ["admin", "user","brand"]
 func LoginSubcriber(nc *nats.Conn) {
 	subject := createSubscriptionString("login/user", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
 		unmarshalErr := json.Unmarshal(m.Data, &request)
-		fmt.Println(m.Data)
 		if unmarshalErr != nil {
 			logrus.Panic(unmarshalErr)
 		} else {
 			// Get username and passwrod from user payload
-			username := string(request.Data.Payload.Data["username"])
-			password := string(request.Data.Payload.Data["password"])
+			userMap := request.Data.Payload.Data.(map[string]string)
+
+			username := string(userMap["username"])
+			password := string(userMap["password"])
 			fmt.Println("username: " + username)
 			fmt.Println("password: " + password)
 			role, check := auth.Login(username, password)
@@ -149,6 +160,66 @@ func LoginSubcriber(nc *nats.Conn) {
 					},
 				}
 
+				message, _ := json.Marshal(response)
+				m.Respond(message)
+			}
+		}
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+// Subcriber for verifying token, Payload should have data:
+//
+//	Payload: Payload{
+//		Type:   []string{"info"},
+//		Status: http.StatusOK,
+//		Data:   ["roleRequired"] Ex: ["admin", "user","brand"]
+//	},
+//
+// ["roleRequired"] Ex: ["admin", "user","brand"]
+func VerifySubcriber(nc *nats.Conn) {
+	subject := createSubscriptionString("verify", "GET", "auth")
+	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
+		var request Request
+		// parsing message to Request format
+		unmarshalErr := json.Unmarshal(m.Data, &request)
+		if unmarshalErr != nil {
+			logrus.Panic(unmarshalErr)
+		} else {
+			token := request.Data.Headers.Authorization
+			username := request.Data.Authorization.User.Username
+			role := request.Data.Authorization.User.Role
+
+			roleRequired := request.Data.Payload.Data.([]string)
+
+			// Verify token
+			_, err := auth.VerifyRequest(token, username, role, roleRequired)
+
+			if err != nil {
+				response := Response{
+					Headers:       request.Data.Headers,
+					Authorization: request.Data.Authorization,
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusUnauthorized,
+						Data:   err.Error(),
+					},
+				}
+				message, _ := json.Marshal(response)
+				m.Respond(message)
+			} else {
+				response := Response{
+					Headers:       request.Data.Headers,
+					Authorization: request.Data.Authorization,
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusOK,
+						Data:   "authorized",
+					},
+				}
 				message, _ := json.Marshal(response)
 				m.Respond(message)
 			}
