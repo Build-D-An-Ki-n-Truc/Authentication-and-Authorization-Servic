@@ -102,72 +102,133 @@ func RegisterSubcriber(nc *nats.Conn) {
 //	},
 //
 // ["roleRequired"] Ex: ["admin", "user","brand"]
+
 func LoginSubcriber(nc *nats.Conn) {
-	subject := createSubscriptionString("login/user", "POST", "auth")
-	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
+	subjectUser := createSubscriptionString("login/user", "POST", "auth")
+	subjectAdmin := createSubscriptionString("login/admin", "POST", "auth")
+	subjectBrand := createSubscriptionString("login/brand", "POST", "auth")
+
+	// Common function that user between each subcriber
+	// Get username and password from user payload
+	getUserInfo := func(request Request) (string, string) {
+		userMap := request.Data.Payload.Data.(map[string]string)
+
+		username := string(userMap["username"])
+		password := string(userMap["password"])
+
+		return username, password
+	}
+
+	// Send Respond to client (through API Gateway)
+	sendRespond := func(username string, role string, check bool) (Response, error) {
+		// Login successfully
+		if check {
+
+			token, tokenErr := jwtFunc.GenerateToken(username, role)
+			if tokenErr != nil {
+				return Response{}, tokenErr
+			}
+
+			response := Response{
+				Headers: Header{
+					Authorization: "Bearer " + token,
+				},
+				Authorization: Authorization{
+					User: User{
+						Username: username,
+						Role:     role,
+					},
+				},
+				Payload: Payload{
+					Type:   []string{"info"},
+					Status: http.StatusAccepted,
+					Data: map[string]string{
+						"Login": "Success",
+					},
+				},
+			}
+			return response, nil
+		} else { // login failed
+			response := Response{
+				Payload: Payload{
+					Type:   []string{"info"},
+					Status: http.StatusOK,
+					Data: map[string]string{
+						"Login": "Failed",
+					},
+				},
+			}
+
+			return response, nil
+		}
+	}
+	// Subscribe to login/user
+	_, errUser := nc.Subscribe(subjectUser, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
 		unmarshalErr := json.Unmarshal(m.Data, &request)
 		if unmarshalErr != nil {
 			logrus.Panic(unmarshalErr)
 		} else {
-			// Get username and passwrod from user payload
-			userMap := request.Data.Payload.Data.(map[string]string)
+			// Get username and password from user payload
+			username, password := getUserInfo(request)
+			role, check := auth.Login(username, password, "casual")
 
-			username := string(userMap["username"])
-			password := string(userMap["password"])
-			fmt.Println("username: " + username)
-			fmt.Println("password: " + password)
-			role, check := auth.Login(username, password)
+			response, _ := sendRespond(username, role, check)
 
-			// Login successfully
-			if check {
-
-				token, tokenErr := jwtFunc.GenerateToken(username, role)
-				if tokenErr != nil {
-					logrus.Panic(tokenErr)
-					return
-				}
-
-				response := Response{
-					Headers: Header{
-						Authorization: "Bearer " + token,
-					},
-					Authorization: Authorization{
-						User: User{
-							Username: username,
-							Role:     role,
-						},
-					},
-					Payload: Payload{
-						Type:   []string{"info"},
-						Status: http.StatusAccepted,
-						Data: map[string]string{
-							"Login": "Success",
-						},
-					},
-				}
-				message, _ := json.Marshal(response)
-				m.Respond(message)
-			} else { // login failed
-				response := Response{
-					Payload: Payload{
-						Type:   []string{"info"},
-						Status: http.StatusOK,
-						Data: map[string]string{
-							"Login": "Failed",
-						},
-					},
-				}
-
-				message, _ := json.Marshal(response)
-				m.Respond(message)
-			}
+			message, _ := json.Marshal(response)
+			m.Respond(message)
 		}
 	})
 
-	if err != nil {
-		log.Fatal(err)
+	if errUser != nil {
+		log.Fatal(errUser)
+	}
+
+	// Subscribe to login/admin
+	_, errAdmin := nc.Subscribe(subjectAdmin, func(m *nats.Msg) {
+		var request Request
+		// parsing message to Request format
+		unmarshalErr := json.Unmarshal(m.Data, &request)
+		if unmarshalErr != nil {
+			logrus.Panic(unmarshalErr)
+		} else {
+			// Get username and password from user payload
+			username, password := getUserInfo(request)
+			role, check := auth.Login(username, password, "admin")
+
+			response, _ := sendRespond(username, role, check)
+
+			message, _ := json.Marshal(response)
+			m.Respond(message)
+		}
+	})
+
+	if errAdmin != nil {
+		log.Fatal(errAdmin)
+	}
+
+	// Subscribe to login/brand
+	_, errBrand := nc.Subscribe(subjectBrand, func(m *nats.Msg) {
+		var request Request
+		// parsing message to Request format
+		unmarshalErr := json.Unmarshal(m.Data, &request)
+		if unmarshalErr != nil {
+			logrus.Panic(unmarshalErr)
+		} else {
+			// Get username and password from user payload
+			username, password := getUserInfo(request)
+			role, check := auth.Login(username, password, "brand")
+
+			response, _ := sendRespond(username, role, check)
+
+			message, _ := json.Marshal(response)
+			m.Respond(message)
+		}
+	})
+
+	if errBrand != nil {
+		log.Fatal(errBrand)
 	}
 }
 
