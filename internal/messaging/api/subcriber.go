@@ -100,7 +100,7 @@ func LoginSubcriber(nc *nats.Conn) {
 	subjectAdmin := createSubscriptionString("login/admin", "POST", "auth")
 	subjectBrand := createSubscriptionString("login/brand", "POST", "auth")
 
-	// Common function that user between each subcriber
+	// Common function that be used between each subcriber
 	// Get username and password from user payload
 	getUserInfo := func(request Request) (string, string) {
 		userMap := request.Data.Payload.Data.(map[string]string)
@@ -154,6 +154,8 @@ func LoginSubcriber(nc *nats.Conn) {
 			return response, nil
 		}
 	}
+
+	// end of common function
 	// Subscribe to login/user
 	_, errUser := nc.Subscribe(subjectUser, func(m *nats.Msg) {
 		var request Request
@@ -224,7 +226,18 @@ func LoginSubcriber(nc *nats.Conn) {
 	}
 }
 
-// Subcriber for verifying token, Payload should have data:
+// Subcriber for verifying token, Request should have data:
+//
+//	Headers: Header{
+//		Authorization: "Bearer " + token,
+//	},
+//
+//	Authorization: Authorization{
+//		User: User{
+//			Username: username,
+//			Role:     role,
+//		},
+//	},
 //
 //	Payload: Payload{
 //		Data:   ["roleRequired"] Ex: ["admin","user","brand"]

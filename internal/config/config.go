@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -22,7 +23,7 @@ var lock = &sync.Mutex{}
 var cfg *Config
 
 func LoadConfig() *Config {
-	err := godotenv.Load()
+	err := godotenv.Load(filepath.Join(".", ".env"))
 
 	if err != nil {
 		log.Fatal("Error loading .env file")

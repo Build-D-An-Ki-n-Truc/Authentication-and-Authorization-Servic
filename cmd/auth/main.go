@@ -38,7 +38,7 @@ func main() {
 
 	// Subcribe to each service
 	api.LoginSubcriber(nc)
-
+	api.VerifySubcriber(nc)
 	// Initialize MongoDB
 
 	fmt.Println("Auth service running at port 3005")
