@@ -59,10 +59,10 @@ type Payload struct {
 }
 
 type Data struct {
-	Headers       Header            `json:"headers"`
-	Authorization Authorization     `json:"authorization"`
-	Params        map[string]string `json:"params"`
-	Payload       Payload           `json:"payload"`
+	Headers       Header                 `json:"headers"`
+	Authorization Authorization          `json:"authorization"`
+	Params        map[string]interface{} `json:"params"`
+	Payload       Payload                `json:"payload"`
 }
 
 // Struct for a Request
@@ -75,10 +75,10 @@ type Request struct {
 // Struct for a Response
 
 type Response struct {
-	Headers       Header            `json:"headers"`
-	Authorization Authorization     `json:"authorization"`
-	Params        map[string]string `json:"params"`
-	Payload       Payload           `json:"payload"`
+	Headers       Header                 `json:"headers"`
+	Authorization Authorization          `json:"authorization"`
+	Params        map[string]interface{} `json:"params"`
+	Payload       Payload                `json:"payload"`
 }
 
 func createSubscriptionString(endpoint, method, service string) string {
@@ -103,10 +103,10 @@ func LoginSubcriber(nc *nats.Conn) {
 	// Common function that be used between each subcriber
 	// Get username and password from user payload
 	getUserInfo := func(request Request) (string, string) {
-		userMap := request.Data.Payload.Data.(map[string]string)
+		userMap := request.Data.Payload.Data.(map[string]interface{})
 
-		username := string(userMap["username"])
-		password := string(userMap["password"])
+		username := userMap["username"].(string)
+		password := userMap["password"].(string)
 
 		return username, password
 	}
