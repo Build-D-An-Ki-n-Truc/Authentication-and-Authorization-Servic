@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -11,35 +10,28 @@ import (
 )
 
 type Config struct {
-	Port   string
-	Secret string
-	DbUrl  string
+	Port          string
+	Secret        string
+	DbUrl         string
+	EmailPassword string
 }
 
-// Singleton Pattern
-var lock = &sync.Mutex{}
+var CFG *Config
 
-// Will change to package-level variable later
-var cfg *Config
-
-func LoadConfig() *Config {
+func LoadConfig() {
 	err := godotenv.Load(filepath.Join(".", ".env"))
 
 	if err != nil {
 		log.Println("Error loading .env file")
 	}
 
-	if cfg == nil {
-		lock.Lock()
-		defer lock.Unlock()
-
-		if cfg == nil {
-			cfg = &Config{
-				Port:   os.Getenv("PORT"),
-				Secret: os.Getenv("SECRET"),
-				DbUrl:  os.Getenv("DB_URL"),
-			}
+	if CFG == nil {
+		CFG = &Config{
+			Port:          os.Getenv("PORT"),
+			Secret:        os.Getenv("SECRET"),
+			DbUrl:         os.Getenv("DB_URL"),
+			EmailPassword: os.Getenv("EMAIL_PASSWORD"),
 		}
 	}
-	return cfg
+
 }

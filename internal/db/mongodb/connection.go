@@ -14,14 +14,8 @@ import (
 // Client is the MongoDB client object
 var Client *mongo.Client
 
-// AdminColl is the collection object for the admin collection
-var AdminColl *mongo.Collection
-
 // UserColl is the collection object for the user collection
 var UserColl *mongo.Collection
-
-// BrandColl is the collection object for the brand collection
-var BrandColl *mongo.Collection
 
 // Initialize a connection to MongoDB
 func InitializeMongoDBClient() error {
@@ -30,7 +24,7 @@ func InitializeMongoDBClient() error {
 	defer cancel() // Ensure the context is canceled after the function returns
 
 	// Load configuration
-	cfg := config.LoadConfig()
+	cfg := config.CFG
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.DbUrl))
@@ -47,9 +41,7 @@ func InitializeMongoDBClient() error {
 
 	// Set the global client object
 	Client = client
-	AdminColl = Client.Database("BuildUserDB").Collection("admin")
-	UserColl = Client.Database("BuildUserDB").Collection("user")
-	BrandColl = Client.Database("BuildUserDB").Collection("brand")
+	UserColl = Client.Database("TestUserDB").Collection("user")
 
 	return nil
 

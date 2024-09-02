@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var cfg = config.LoadConfig()
+var CFG = config.CFG
 
 // generateToken generates a JWT for the given username and role.
 func GenerateToken(username string, role string) (string, error) {
@@ -27,7 +27,7 @@ func GenerateToken(username string, role string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 
 	// Sign the token
-	hmacSecret, err := base64.StdEncoding.DecodeString(cfg.Secret)
+	hmacSecret, err := base64.StdEncoding.DecodeString(CFG.Secret)
 	if err != nil {
 		log.Panic("Error decoding Base64 string:", err)
 	}
@@ -49,7 +49,7 @@ func ExtractToken(tokenString string) (jwt.MapClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(cfg.Secret), nil
+		return []byte(CFG.Secret), nil
 	})
 
 	if err != nil {

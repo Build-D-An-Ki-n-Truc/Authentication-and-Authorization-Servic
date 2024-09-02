@@ -94,136 +94,77 @@ func createSubscriptionString(endpoint, method, service string) string {
 //		},
 //	},
 //
-// ["roleRequired"] Ex: ["admin", "user","brand"]
+// auth/login/user POST
 func LoginSubcriber(nc *nats.Conn) {
-	subjectUser := createSubscriptionString("login/user", "POST", "auth")
-	subjectAdmin := createSubscriptionString("login/admin", "POST", "auth")
-	subjectBrand := createSubscriptionString("login/brand", "POST", "auth")
-
-	// Common function that be used between each subcriber
-	// Get username and password from user payload
-	getUserInfo := func(request Request) (string, string) {
-		userMap := request.Data.Payload.Data.(map[string]interface{})
-
-		username := userMap["username"].(string)
-		password := userMap["password"].(string)
-
-		return username, password
-	}
-
-	// Send Respond to client (through API Gateway)
-	sendRespond := func(username string, role string, check bool) (Response, error) {
-		// Login successfully
-		if check {
-
-			token, tokenErr := jwtFunc.GenerateToken(username, role)
-			if tokenErr != nil {
-				return Response{}, tokenErr
-			}
-
+	subject := createSubscriptionString("login/user", "POST", "auth")
+	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
+		var request Request
+		// parsing message to Request format
+		unmarshalErr := json.Unmarshal(m.Data, &request)
+		if unmarshalErr != nil {
+			logrus.Println(unmarshalErr)
 			response := Response{
-				Headers: Header{
-					Authorization: "Bearer " + token,
-				},
-				Authorization: Authorization{
-					User: User{
-						Username: username,
-						Role:     role,
-					},
-				},
+				Headers:       request.Data.Headers,
+				Authorization: request.Data.Authorization,
 				Payload: Payload{
 					Type:   []string{"info"},
-					Status: http.StatusAccepted,
-					Data: map[string]string{
-						"Login": "Success",
-					},
+					Status: http.StatusBadRequest,
+					Data:   "Wrong format",
 				},
 			}
-			return response, nil
-		} else { // login failed
-			response := Response{
-				Payload: Payload{
-					Type:   []string{"info"},
-					Status: http.StatusOK,
-					Data: map[string]string{
-						"Login": "Failed",
+			message, _ := json.Marshal(response)
+			m.Respond(message)
+			return
+		} else {
+			userMap := request.Data.Payload.Data.(map[string]string)
+
+			username := userMap["username"]
+			password := userMap["password"]
+
+			role, check := auth.Login(username, password)
+
+			if check {
+				// Create a token
+				token, err := jwtFunc.GenerateToken(username, role)
+				if err != nil {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusInternalServerError,
+							Data:   err.Error(),
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+				} else {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusOK,
+							Data:   token,
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+				}
+			} else {
+				response := Response{
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusUnauthorized,
+						Data:   "Unauthorized",
 					},
-				},
+				}
+				message, _ := json.Marshal(response)
+				m.Respond(message)
 			}
-
-			return response, nil
-		}
-	}
-
-	// end of common function
-	// Subscribe to login/user
-	_, errUser := nc.Subscribe(subjectUser, func(m *nats.Msg) {
-		var request Request
-		// parsing message to Request format
-		unmarshalErr := json.Unmarshal(m.Data, &request)
-		if unmarshalErr != nil {
-			logrus.Panic(unmarshalErr)
-		} else {
-			// Get username and password from user payload
-			username, password := getUserInfo(request)
-			role, check := auth.Login(username, password, "casual")
-
-			response, _ := sendRespond(username, role, check)
-
-			message, _ := json.Marshal(response)
-			m.Respond(message)
 		}
 	})
 
-	if errUser != nil {
-		log.Fatal(errUser)
+	if err != nil {
+		log.Println(err)
 	}
 
-	// Subscribe to login/admin
-	_, errAdmin := nc.Subscribe(subjectAdmin, func(m *nats.Msg) {
-		var request Request
-		// parsing message to Request format
-		unmarshalErr := json.Unmarshal(m.Data, &request)
-		if unmarshalErr != nil {
-			logrus.Panic(unmarshalErr)
-		} else {
-			// Get username and password from user payload
-			username, password := getUserInfo(request)
-			role, check := auth.Login(username, password, "admin")
-
-			response, _ := sendRespond(username, role, check)
-
-			message, _ := json.Marshal(response)
-			m.Respond(message)
-		}
-	})
-
-	if errAdmin != nil {
-		log.Fatal(errAdmin)
-	}
-
-	// Subscribe to login/brand
-	_, errBrand := nc.Subscribe(subjectBrand, func(m *nats.Msg) {
-		var request Request
-		// parsing message to Request format
-		unmarshalErr := json.Unmarshal(m.Data, &request)
-		if unmarshalErr != nil {
-			logrus.Panic(unmarshalErr)
-		} else {
-			// Get username and password from user payload
-			username, password := getUserInfo(request)
-			role, check := auth.Login(username, password, "brand")
-
-			response, _ := sendRespond(username, role, check)
-
-			message, _ := json.Marshal(response)
-			m.Respond(message)
-		}
-	})
-
-	if errBrand != nil {
-		log.Fatal(errBrand)
-	}
 }
 
 // Subcriber for verifying token, Request should have data:
@@ -251,7 +192,19 @@ func VerifySubcriber(nc *nats.Conn) {
 		// parsing message to Request format
 		unmarshalErr := json.Unmarshal(m.Data, &request)
 		if unmarshalErr != nil {
-			logrus.Panic(unmarshalErr)
+			logrus.Println(unmarshalErr)
+			response := Response{
+				Headers:       request.Data.Headers,
+				Authorization: request.Data.Authorization,
+				Payload: Payload{
+					Type:   []string{"info"},
+					Status: http.StatusBadRequest,
+					Data:   "Wrong format",
+				},
+			}
+			message, _ := json.Marshal(response)
+			m.Respond(message)
+			return
 		} else {
 			token := request.Data.Headers.Authorization[7:]
 			username := request.Data.Authorization.User.Username
@@ -291,10 +244,98 @@ func VerifySubcriber(nc *nats.Conn) {
 	})
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
 
+// Subcriber for register, Request should have data:
+//
+//	Payload: Payload{
+//		Data:  {
+//			"username": "username",
+//			"password": "password",
+//			"name": "name",
+//			"email": "email",
+//			"role": "role",
+//			"phone": "phone",
+//			"isLocked": false,
+//		},
+//	},
+//
+// auth/register/user POST
 func RegisterSubcriber(nc *nats.Conn) {
-	//subject := createSubscriptionString("register/user", "POST", "auth")
+	subject := createSubscriptionString("register/user", "POST", "auth")
+	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
+		var request Request
+		// parsing message to Request format
+		unmarshalErr := json.Unmarshal(m.Data, &request)
+		if unmarshalErr != nil {
+			logrus.Println(unmarshalErr)
+			response := Response{
+				Headers:       request.Data.Headers,
+				Authorization: request.Data.Authorization,
+				Payload: Payload{
+					Type:   []string{"info"},
+					Status: http.StatusBadRequest,
+					Data:   "Wrong format",
+				},
+			}
+			message, _ := json.Marshal(response)
+			m.Respond(message)
+			return
+		} else {
+			userMap := request.Data.Payload.Data.(map[string]interface{})
+
+			username := userMap["username"].(string)
+			password := userMap["password"].(string)
+			name := userMap["name"].(string)
+			email := userMap["email"].(string)
+			role := userMap["role"].(string)
+			phone := userMap["phone"].(string)
+			isLocked := userMap["isLocked"].(bool)
+
+			// Register account (check if username already exists)
+			// check == true when register success
+			check, err := auth.RegisterAccount(username, password, name, email, role, phone, isLocked)
+
+			if err != nil {
+				response := Response{
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusBadGateway,
+						Data:   err.Error(),
+					},
+				}
+				message, _ := json.Marshal(response)
+				m.Respond(message)
+			} else {
+				if check {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusAccepted,
+							Data:   "Register Success",
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+				} else {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusConflict,
+							Data:   "Username already exists",
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+				}
+			}
+		}
+	})
+
+	if err != nil {
+		log.Println(err)
+	}
+
 }

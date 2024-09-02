@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Build-D-An-Ki-n-Truc/auth/internal/config"
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/db/mongodb"
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/messaging/api"
 	"github.com/nats-io/nats.go"
@@ -12,6 +13,7 @@ import (
 )
 
 func main() {
+	config.LoadConfig()
 	url, exists := os.LookupEnv("NATS_URL")
 	if !exists {
 		url = nats.DefaultURL
@@ -39,6 +41,7 @@ func main() {
 	// Subcribe to each service
 	api.LoginSubcriber(nc)
 	api.VerifySubcriber(nc)
+	api.RegisterSubcriber(nc)
 	// Initialize MongoDB
 
 	fmt.Println("Auth service running at port 3005")
