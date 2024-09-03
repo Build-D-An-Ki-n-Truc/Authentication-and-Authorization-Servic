@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var CFG = config.CFG
+var CFG = config.LoadConfig()
 
 // generateToken generates a JWT for the given username and role.
 func GenerateToken(username string, role string) (string, error) {

@@ -13,7 +13,7 @@ func randomOTP() int {
 	return random
 }
 
-var CFG = config.CFG
+var CFG = config.LoadConfig()
 
 // send email with OTP using gmail smtp server
 // this will return OTP and error if any

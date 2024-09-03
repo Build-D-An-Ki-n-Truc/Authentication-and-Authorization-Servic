@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/auth"
+	emailSender "github.com/Build-D-An-Ki-n-Truc/auth/internal/email"
+	"github.com/Build-D-An-Ki-n-Truc/auth/internal/hashing"
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/jwtFunc"
 	"github.com/nats-io/nats.go"
 	"github.com/sirupsen/logrus"
@@ -88,15 +90,15 @@ func createSubscriptionString(endpoint, method, service string) string {
 // Subcriber for login, Payload should have data:
 //
 //	Payload: Payload{
-//		Data:   {
+//		data:   {
 //			"username": "username",
 //			"password": "password",
 //		},
 //	},
 //
-// auth/login/user POST
+// auth/login POST
 func LoginSubcriber(nc *nats.Conn) {
-	subject := createSubscriptionString("login/user", "POST", "auth")
+	subject := createSubscriptionString("login", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
@@ -250,19 +252,24 @@ func VerifySubcriber(nc *nats.Conn) {
 
 // Subcriber for register, Request should have data:
 //
-//	Payload: Payload{
-//		Data:  {
-//			"username": "username",
-//			"password": "password",
-//			"name": "name",
-//			"email": "email",
-//			"role": "role",
-//			"phone": "phone",
-//			"isLocked": false,
-//		},
-//	},
+//	 Params: {
+//		   crypted: bool
+//	 }
 //
-// auth/register/user POST
+//		Payload: Payload{
+//
+//			Data:  {
+//				"username": "username",
+//				"password": "password",
+//				"name": "name",
+//				"email": "email",
+//				"role": "role",
+//				"phone": "phone",
+//				"isLocked": false,
+//			},
+//		},
+//
+// auth/register/user?crypted=boolean POST
 func RegisterSubcriber(nc *nats.Conn) {
 	subject := createSubscriptionString("register/user", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
@@ -285,9 +292,27 @@ func RegisterSubcriber(nc *nats.Conn) {
 			return
 		} else {
 			userMap := request.Data.Payload.Data.(map[string]interface{})
+			crypted := request.Data.Params["crypted"].(bool)
 
 			username := userMap["username"].(string)
+
 			password := userMap["password"].(string)
+			if !crypted {
+				hashedPassword, err := hashing.GenerateHash([]byte(password))
+				if err != nil {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusBadRequest,
+							Data:   "Password too long",
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+					return
+				}
+				password = string(hashedPassword)
+			}
 			name := userMap["name"].(string)
 			email := userMap["email"].(string)
 			role := userMap["role"].(string)
@@ -296,7 +321,7 @@ func RegisterSubcriber(nc *nats.Conn) {
 
 			// Register account (check if username already exists)
 			// check == true when register success
-			check, err := auth.RegisterAccount(username, password, name, email, role, phone, isLocked)
+			checkSuccess, err := auth.RegisterAccount(username, password, name, email, role, phone, isLocked)
 
 			if err != nil {
 				response := Response{
@@ -309,7 +334,7 @@ func RegisterSubcriber(nc *nats.Conn) {
 				message, _ := json.Marshal(response)
 				m.Respond(message)
 			} else {
-				if check {
+				if checkSuccess {
 					response := Response{
 						Payload: Payload{
 							Type:   []string{"info"},
@@ -330,6 +355,76 @@ func RegisterSubcriber(nc *nats.Conn) {
 					message, _ := json.Marshal(response)
 					m.Respond(message)
 				}
+			}
+		}
+	})
+
+	if err != nil {
+		log.Println(err)
+	}
+
+}
+
+// Send OTP email to user subcriber
+// Request should have data:
+//
+//	Payload: Payload{
+//		Data:   {
+//			"email": "email",
+//			"name": "name", // this can be username or name, this is for personalization
+//		},
+//	},
+//
+// auth/sendOTP POST
+// this will return a OTP if success and error if failed
+func SendOTPSubcriber(nc *nats.Conn) {
+	subject := createSubscriptionString("sendOTP", "POST", "auth")
+	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
+		var request Request
+		// parsing message to Request format
+		unmarshalErr := json.Unmarshal(m.Data, &request)
+		if unmarshalErr != nil {
+			logrus.Println(unmarshalErr)
+			response := Response{
+				Headers:       request.Data.Headers,
+				Authorization: request.Data.Authorization,
+				Payload: Payload{
+					Type:   []string{"info"},
+					Status: http.StatusBadRequest,
+					Data:   "Wrong format",
+				},
+			}
+			message, _ := json.Marshal(response)
+			m.Respond(message)
+			return
+		} else {
+			userMap := request.Data.Payload.Data.(map[string]string)
+
+			email := userMap["email"]
+			name := userMap["name"]
+			// Send OTP email
+			otp, err := emailSender.SendEmail(email, name)
+
+			if err != nil {
+				response := Response{
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusBadGateway,
+						Data:   err.Error(),
+					},
+				}
+				message, _ := json.Marshal(response)
+				m.Respond(message)
+			} else {
+				response := Response{
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusOK,
+						Data:   otp,
+					},
+				}
+				message, _ := json.Marshal(response)
+				m.Respond(message)
 			}
 		}
 	})

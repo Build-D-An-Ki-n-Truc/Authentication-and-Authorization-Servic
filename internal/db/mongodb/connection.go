@@ -24,7 +24,7 @@ func InitializeMongoDBClient() error {
 	defer cancel() // Ensure the context is canceled after the function returns
 
 	// Load configuration
-	cfg := config.CFG
+	cfg := config.LoadConfig()
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.DbUrl))

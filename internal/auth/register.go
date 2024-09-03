@@ -21,13 +21,6 @@ func RegisterAccount(username string, password string, name string, email string
 		return false, nil
 	}
 
-	// Hash the password
-	// hashedPassword, err := hash.HashPassword(password)
-	// if err != nil {
-	// 	return false, err
-	// }
-
-	// Create a new user
 	user := mongodb.UserStruct{
 		Username: username,
 		Password: password,

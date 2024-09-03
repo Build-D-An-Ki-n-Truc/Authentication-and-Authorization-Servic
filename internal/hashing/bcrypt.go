@@ -10,7 +10,7 @@ func GenerateHash(password []byte) ([]byte, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 
 	if err != nil {
-		logrus.Panic(err)
+		logrus.Println(err)
 		return nil, err
 	}
 
