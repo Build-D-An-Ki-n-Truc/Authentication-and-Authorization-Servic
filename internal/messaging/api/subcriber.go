@@ -153,7 +153,7 @@ func LoginSubcriber(nc *nats.Conn) {
 						Payload: Payload{
 							Type:   []string{"info"},
 							Status: http.StatusOK,
-							Data:   "login success",
+							Data:   token,
 						},
 					}
 					message, _ := json.Marshal(response)
