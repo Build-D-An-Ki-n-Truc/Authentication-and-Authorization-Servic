@@ -5,28 +5,34 @@ This README provides an overview of the auth API and its endpoints.
 
 ## Endpoints
 
-### 1. POST /auth/login/user
-- Description: Login as user.
+### 1. POST /auth/login/
+- Description: Login .
 - Data:{
 		"username": username,
 		"password": password,
 	},
 - Response: Login status.
-![Placeholder Image](https://github.com/Build-D-An-Ki-n-Truc/auth/blob/main/image/loginuser.png)
+![Placeholder Image](https://github.com/Build-D-An-Ki-n-Truc/auth/blob/main/image/login.png)
 
-### 2. POST /auth/login/admin
-- Description: Login as admin.
+### 2. POST /auth/register/user?crypted=bool
+- Description: Register a new user.
+- Parameter: crypted=bool (true if password has already been ecrypted with bcrypt, false otherwise)
 - Data:{
-		"username": username,
-		"password": password,
+		"username" : username,
+        "password" : password,
+        "name": name,
+        "email": email, 
+        "role":"user",
+        "phone": phone,
+        "isLocked": false
 	},
-- Response: Login status.
-![Placeholder Image](https://github.com/Build-D-An-Ki-n-Truc/auth/blob/main/image/loginuser.png)
-### 3. POST /auth/login/brand
-- Description: Login as brand.
+- Response: Register status.
+![Placeholder Image](https://github.com/Build-D-An-Ki-n-Truc/auth/blob/main/image/register.png)
+
+### 3. POST /auth/sendOTP
+- Description: Send OTP via email to new user to confirm register, This will response with the OTP that has been sent to user.
 - Data:{
-		"username": username,
-		"password": password,
+		"email" : email,
 	},
-- Response: Login status.
-![Placeholder Image](https://github.com/Build-D-An-Ki-n-Truc/auth/blob/main/image/loginuser.png)
+- Response: Email send status.
+![Placeholder Image](https://github.com/Build-D-An-Ki-n-Truc/auth/blob/main/image/sendEmail.png)
