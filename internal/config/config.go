@@ -2,12 +2,7 @@ package config
 
 import (
 	"os"
-	"path/filepath"
 	"sync"
-
-	log "github.com/sirupsen/logrus"
-
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -24,11 +19,11 @@ var lock = &sync.Mutex{}
 var cfg *Config
 
 func LoadConfig() *Config {
-	err := godotenv.Load(filepath.Join(".", ".env"))
+	// err := godotenv.Load(filepath.Join(".", ".env"))
 
-	if err != nil {
-		log.Println("Error loading .env file")
-	}
+	// if err != nil {
+	// 	log.Println("Error loading .env file")
+	// }
 
 	if cfg == nil {
 		lock.Lock()
