@@ -17,7 +17,7 @@ var CFG = config.LoadConfig()
 
 // send email with OTP using gmail smtp server
 // this will return OTP and error if any
-func SendEmail(email string, name string) (string, error) {
+func SendEmail(email string) (string, error) {
 	// Configure the SMTP server
 	d := gomail.NewDialer("smtp.gmail.com", 587, "kiznlh", CFG.EmailPassword)
 

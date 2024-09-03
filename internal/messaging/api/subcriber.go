@@ -391,7 +391,6 @@ func RegisterSubcriber(nc *nats.Conn) {
 //	Payload: Payload{
 //		Data:   {
 //			"email": "email",
-//			"name": "name", // this can be username or name, this is for personalization
 //		},
 //	},
 //
@@ -421,12 +420,11 @@ func SendOTPSubcriber(nc *nats.Conn) {
 			userMap := request.Data.Payload.Data.(map[string]interface{})
 
 			email := userMap["email"].(string)
-			name := userMap["name"].(string)
+			//name := userMap["name"].(string)
 			// Send OTP email
-			otp, err := emailSender.SendEmail(email, name)
+			otp, err := emailSender.SendEmail(email)
 
 			if err != nil {
-
 				response := Response{
 					Headers:       request.Data.Headers,
 					Authorization: request.Data.Authorization,
