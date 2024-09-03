@@ -118,11 +118,12 @@ func LoginSubcriber(nc *nats.Conn) {
 			m.Respond(message)
 			return
 		} else {
-			userMap := request.Data.Payload.Data.(map[string]string)
+			userMap := request.Data.Payload.Data.(map[string]interface{})
 
-			username := userMap["username"]
-			password := userMap["password"]
+			username := userMap["username"].(string)
+			password := userMap["password"].(string)
 
+			// check == true if login success
 			role, check := auth.Login(username, password)
 
 			if check {
@@ -133,22 +134,32 @@ func LoginSubcriber(nc *nats.Conn) {
 						Payload: Payload{
 							Type:   []string{"info"},
 							Status: http.StatusInternalServerError,
-							Data:   err.Error(),
+							Data:   "Error:" + err.Error(),
 						},
 					}
 					message, _ := json.Marshal(response)
 					m.Respond(message)
 				} else {
 					response := Response{
+						Headers: Header{
+							Authorization: "Bearer " + token,
+						},
+						Authorization: Authorization{
+							User: User{
+								Username: username,
+								Role:     role,
+							},
+						},
 						Payload: Payload{
 							Type:   []string{"info"},
 							Status: http.StatusOK,
-							Data:   token,
+							Data:   "login success",
 						},
 					}
 					message, _ := json.Marshal(response)
 					m.Respond(message)
 				}
+				// Wrong password
 			} else {
 				response := Response{
 					Payload: Payload{
@@ -253,7 +264,7 @@ func VerifySubcriber(nc *nats.Conn) {
 // Subcriber for register, Request should have data:
 //
 //	 Params: {
-//		   crypted: bool
+//		   crypted: bool // "true or false"
 //	 }
 //
 //		Payload: Payload{
@@ -292,7 +303,13 @@ func RegisterSubcriber(nc *nats.Conn) {
 			return
 		} else {
 			userMap := request.Data.Payload.Data.(map[string]interface{})
-			crypted := request.Data.Params["crypted"].(bool)
+			var crypted bool
+			cryptedParam := request.Data.Params["crypted"].(string)
+			if cryptedParam == "true" {
+				crypted = true
+			} else {
+				crypted = false
+			}
 
 			username := userMap["username"].(string)
 
@@ -313,12 +330,15 @@ func RegisterSubcriber(nc *nats.Conn) {
 				}
 				password = string(hashedPassword)
 			}
-			name := userMap["name"].(string)
-			email := userMap["email"].(string)
-			role := userMap["role"].(string)
-			phone := userMap["phone"].(string)
-			isLocked := userMap["isLocked"].(bool)
-
+			// turn this to check if map has key then default value
+			name := convertString(userMap["name"])
+			email := convertString(userMap["email"])
+			role := convertString(userMap["role"])
+			phone := convertString(userMap["phone"])
+			isLocked, ok := userMap["isLocked"].(bool)
+			if !ok {
+				isLocked = false
+			}
 			// Register account (check if username already exists)
 			// check == true when register success
 			checkSuccess, err := auth.RegisterAccount(username, password, name, email, role, phone, isLocked)
@@ -398,15 +418,18 @@ func SendOTPSubcriber(nc *nats.Conn) {
 			m.Respond(message)
 			return
 		} else {
-			userMap := request.Data.Payload.Data.(map[string]string)
+			userMap := request.Data.Payload.Data.(map[string]interface{})
 
-			email := userMap["email"]
-			name := userMap["name"]
+			email := userMap["email"].(string)
+			name := userMap["name"].(string)
 			// Send OTP email
 			otp, err := emailSender.SendEmail(email, name)
 
 			if err != nil {
+
 				response := Response{
+					Headers:       request.Data.Headers,
+					Authorization: request.Data.Authorization,
 					Payload: Payload{
 						Type:   []string{"info"},
 						Status: http.StatusBadGateway,
@@ -417,6 +440,8 @@ func SendOTPSubcriber(nc *nats.Conn) {
 				m.Respond(message)
 			} else {
 				response := Response{
+					Headers:       request.Data.Headers,
+					Authorization: request.Data.Authorization,
 					Payload: Payload{
 						Type:   []string{"info"},
 						Status: http.StatusOK,
@@ -433,4 +458,12 @@ func SendOTPSubcriber(nc *nats.Conn) {
 		log.Println(err)
 	}
 
+}
+
+func convertString(value interface{}) string {
+	convertedValue, ok := value.(string)
+	if !ok {
+		convertedValue = ""
+	}
+	return convertedValue
 }
