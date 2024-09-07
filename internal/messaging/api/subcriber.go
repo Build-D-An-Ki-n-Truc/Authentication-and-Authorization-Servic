@@ -199,7 +199,7 @@ func LoginSubcriber(nc *nats.Conn) {
 //
 // ["roleRequired"] Ex: ["admin", "user","brand"]
 func VerifySubcriber(nc *nats.Conn) {
-	subject := createSubscriptionString("verify", "GET", "auth")
+	subject := createSubscriptionString("verify", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
@@ -465,3 +465,146 @@ func convertString(value interface{}) string {
 	}
 	return convertedValue
 }
+
+// Subcriber for create a Brand, Payload should have data:
+//
+// Payload: Payload{
+//		Data:{
+//			"username": username,
+//			"password": password,
+//			"name": name,
+//			"email": email,
+//			"role": brand,
+//			"phone": phone,
+//			"isLocked": isLocked,
+// 			"turn": 0,
+// 			"brand_name": brand_name,
+// 			"industry": industry,
+// 			"address": address,
+// 			"lat": latitude,
+// 			"long": longitude,
+//		},
+//	},
+//
+// users/createBrand/ POST	-> create a Brand
+// func CreateBrandSubcriber(nc *nats.Conn) {
+// 	subjectUser := createSubscriptionString("createBrand", "POST", "users")
+// 	// Subscribe to users/create
+// 	_, errUser := nc.Subscribe(subjectUser, func(m *nats.Msg) {
+// 		var request Request
+// 		// parsing message to Request format
+// 		unmarshalErr := json.Unmarshal(m.Data, &request)
+// 		if unmarshalErr != nil {
+// 			logrus.Println(unmarshalErr)
+// 			response := Response{
+// 				Headers:       request.Data.Headers,
+// 				Authorization: request.Data.Authorization,
+// 				Payload: Payload{
+// 					Type:   []string{"info"},
+// 					Status: http.StatusBadRequest,
+// 					Data:   "Wrong format",
+// 				},
+// 			}
+// 			message, _ := json.Marshal(response)
+// 			m.Respond(message)
+// 			return
+// 		} else {
+// 			// Get data from request
+// 			// type assertion
+// 			RequestData := request.Data.Payload.Data.(map[string]interface{})
+// 			username := RequestData["username"].(string)
+// 			password := RequestData["password"].(string)
+// 			name := RequestData["name"].(string)
+// 			email := RequestData["email"].(string)
+// 			role := RequestData["role"].(string)
+// 			phone := RequestData["phone"].(string)
+// 			isLocked := RequestData["isLocked"].(bool)
+// 			turn := RequestData["turn"].(float64)
+// 			brand_name := RequestData["brand_name"].(string)
+// 			industry := RequestData["industry"].(string)
+// 			address := RequestData["address"].(string)
+// 			lat := RequestData["lat"].(float64)
+// 			long := RequestData["long"].(float64)
+
+// 			// Create a new brand then get brand primitive.ObjectID
+// 			callBrand := Request{
+// 				Data: Data{
+// 					Headers: request.Data.Headers,
+// 					Authorization: request.Data.Authorization,
+// 					Payload: Payload{
+// 							Type:   []string{"info"},
+// 							Status: http.StatusOK,
+// 							Data:   map[string]interface{}{
+// 								"brand_name": brand_name,
+// 								"industry": industry,
+// 								"address": address,
+// 								"gps_coordinate": map[string]float64{
+// 									"lat": lat,
+// 									"long": long,
+// 								},
+// 							},
+// 						},
+// 				},
+// 			}
+
+// 			brandRequest, _ := json.Marshal(callBrand)
+
+// 			_, err := nc.Request("http://localhost:3000/brand-manage/brand-register", brandRequest, 1000*time.Millisecond)
+// 			if err != nil {
+// 				response := Response{
+// 					Headers:       request.Data.Headers,
+// 					Authorization: request.Data.Authorization,
+// 					Payload: Payload{
+// 						Type:   []string{"info"},
+// 						Status: http.StatusBadRequest,
+// 						Data:   "Failed to create brand, err: " + err.Error(),
+// 					},
+// 				}
+// 				message, _ := json.Marshal(response)
+// 				m.Respond(message)
+// 			}
+
+// 			err = mongodb.CreateUser(NewUser)
+// 			// Create a new user
+// 			NewUser := mongodb.UserStruct{
+// 				Username: username,
+// 				Password: password,
+// 				Name:     name,
+// 				Email:    email,
+// 				Role:     role,
+// 				Phone:    phone,
+// 				IsLocked: isLocked,
+// 				Turn:    int(turn),
+// 			}
+// 			if err != nil {
+// 				response := Response{
+// 					Headers:       request.Data.Headers,
+// 					Authorization: request.Data.Authorization,
+// 					Payload: Payload{
+// 						Type:   []string{"info"},
+// 						Status: http.StatusBadRequest,
+// 						Data:   "Failed to create user, err: " + err.Error(),
+// 					},
+// 				}
+// 				message, _ := json.Marshal(response)
+// 				m.Respond(message)
+// 			} else {
+// 				response := Response{
+// 					Headers:       request.Data.Headers,
+// 					Authorization: request.Data.Authorization,
+// 					Payload: Payload{
+// 						Type:   []string{"info"},
+// 						Status: http.StatusOK,
+// 						Data:   "User created",
+// 					},
+// 				}
+// 				message, _ := json.Marshal(response)
+// 				m.Respond(message)
+// 			}
+// 		}
+// 	})
+
+// 	if errUser != nil {
+// 		log.Println(errUser)
+// 	}
+// }
