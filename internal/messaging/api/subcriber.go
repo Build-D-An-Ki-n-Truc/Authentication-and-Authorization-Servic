@@ -12,6 +12,7 @@ import (
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/jwtFunc"
 	"github.com/nats-io/nats.go"
 	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Message Pattern
@@ -468,143 +469,139 @@ func convertString(value interface{}) string {
 
 // Subcriber for create a Brand, Payload should have data:
 //
-// Payload: Payload{
-//		Data:{
-//			"username": username,
-//			"password": password,
-//			"name": name,
-//			"email": email,
-//			"role": brand,
-//			"phone": phone,
-//			"isLocked": isLocked,
-// 			"turn": 0,
-// 			"brand_name": brand_name,
-// 			"industry": industry,
-// 			"address": address,
-// 			"lat": latitude,
-// 			"long": longitude,
-//		},
-//	},
+//	 Params: {
+//		   crypted: bool // "true or false"
+//	 }
 //
-// users/createBrand/ POST	-> create a Brand
-// func CreateBrandSubcriber(nc *nats.Conn) {
-// 	subjectUser := createSubscriptionString("createBrand", "POST", "users")
-// 	// Subscribe to users/create
-// 	_, errUser := nc.Subscribe(subjectUser, func(m *nats.Msg) {
-// 		var request Request
-// 		// parsing message to Request format
-// 		unmarshalErr := json.Unmarshal(m.Data, &request)
-// 		if unmarshalErr != nil {
-// 			logrus.Println(unmarshalErr)
-// 			response := Response{
-// 				Headers:       request.Data.Headers,
-// 				Authorization: request.Data.Authorization,
-// 				Payload: Payload{
-// 					Type:   []string{"info"},
-// 					Status: http.StatusBadRequest,
-// 					Data:   "Wrong format",
-// 				},
-// 			}
-// 			message, _ := json.Marshal(response)
-// 			m.Respond(message)
-// 			return
-// 		} else {
-// 			// Get data from request
-// 			// type assertion
-// 			RequestData := request.Data.Payload.Data.(map[string]interface{})
-// 			username := RequestData["username"].(string)
-// 			password := RequestData["password"].(string)
-// 			name := RequestData["name"].(string)
-// 			email := RequestData["email"].(string)
-// 			role := RequestData["role"].(string)
-// 			phone := RequestData["phone"].(string)
-// 			isLocked := RequestData["isLocked"].(bool)
-// 			turn := RequestData["turn"].(float64)
-// 			brand_name := RequestData["brand_name"].(string)
-// 			industry := RequestData["industry"].(string)
-// 			address := RequestData["address"].(string)
-// 			lat := RequestData["lat"].(float64)
-// 			long := RequestData["long"].(float64)
+//	Payload: Payload{
+//			Data:{
+//				"username": username,
+//				"password": password,
+//				"name": name,
+//				"email": email,
+//				"role": brand,
+//				"phone": phone,
+//				"isLocked": isLocked,
+//		        "brandID": brandID,
+//			},
+//		},
+//
+// auth/register/brand?crypted=bool POST	-> create a Brand User
+func RegisterBrandBrandSubcriber(nc *nats.Conn) {
+	subject := createSubscriptionString("register/brand", "POST", "auth")
+	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
+		var request Request
+		// parsing message to Request format
+		unmarshalErr := json.Unmarshal(m.Data, &request)
+		if unmarshalErr != nil {
+			logrus.Println(unmarshalErr)
+			response := Response{
+				Headers:       request.Data.Headers,
+				Authorization: request.Data.Authorization,
+				Payload: Payload{
+					Type:   []string{"info"},
+					Status: http.StatusBadRequest,
+					Data:   "Wrong format",
+				},
+			}
+			message, _ := json.Marshal(response)
+			m.Respond(message)
+			return
+		} else {
+			var crypted bool
+			cryptedParam := request.Data.Params["crypted"].(string)
+			if cryptedParam == "true" {
+				crypted = true
+			} else {
+				crypted = false
+			}
 
-// 			// Create a new brand then get brand primitive.ObjectID
-// 			callBrand := Request{
-// 				Data: Data{
-// 					Headers: request.Data.Headers,
-// 					Authorization: request.Data.Authorization,
-// 					Payload: Payload{
-// 							Type:   []string{"info"},
-// 							Status: http.StatusOK,
-// 							Data:   map[string]interface{}{
-// 								"brand_name": brand_name,
-// 								"industry": industry,
-// 								"address": address,
-// 								"gps_coordinate": map[string]float64{
-// 									"lat": lat,
-// 									"long": long,
-// 								},
-// 							},
-// 						},
-// 				},
-// 			}
+			userMap := request.Data.Payload.Data.(map[string]interface{})
 
-// 			brandRequest, _ := json.Marshal(callBrand)
+			username := userMap["username"].(string)
+			password := userMap["password"].(string)
+			name := userMap["name"].(string)
+			email := userMap["email"].(string)
+			role := userMap["role"].(string)
+			phone := userMap["phone"].(string)
+			isLocked := userMap["isLocked"].(bool)
+			brandID := userMap["brandID"].(string)
 
-// 			_, err := nc.Request("http://localhost:3000/brand-manage/brand-register", brandRequest, 1000*time.Millisecond)
-// 			if err != nil {
-// 				response := Response{
-// 					Headers:       request.Data.Headers,
-// 					Authorization: request.Data.Authorization,
-// 					Payload: Payload{
-// 						Type:   []string{"info"},
-// 						Status: http.StatusBadRequest,
-// 						Data:   "Failed to create brand, err: " + err.Error(),
-// 					},
-// 				}
-// 				message, _ := json.Marshal(response)
-// 				m.Respond(message)
-// 			}
+			// Convert password to hash
+			if !crypted {
+				hashedPassword, err := hashing.GenerateHash([]byte(password))
+				if err != nil {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusBadRequest,
+							Data:   "Password too long",
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+					return
+				}
+				password = string(hashedPassword)
+			}
 
-// 			err = mongodb.CreateUser(NewUser)
-// 			// Create a new user
-// 			NewUser := mongodb.UserStruct{
-// 				Username: username,
-// 				Password: password,
-// 				Name:     name,
-// 				Email:    email,
-// 				Role:     role,
-// 				Phone:    phone,
-// 				IsLocked: isLocked,
-// 				Turn:    int(turn),
-// 			}
-// 			if err != nil {
-// 				response := Response{
-// 					Headers:       request.Data.Headers,
-// 					Authorization: request.Data.Authorization,
-// 					Payload: Payload{
-// 						Type:   []string{"info"},
-// 						Status: http.StatusBadRequest,
-// 						Data:   "Failed to create user, err: " + err.Error(),
-// 					},
-// 				}
-// 				message, _ := json.Marshal(response)
-// 				m.Respond(message)
-// 			} else {
-// 				response := Response{
-// 					Headers:       request.Data.Headers,
-// 					Authorization: request.Data.Authorization,
-// 					Payload: Payload{
-// 						Type:   []string{"info"},
-// 						Status: http.StatusOK,
-// 						Data:   "User created",
-// 					},
-// 				}
-// 				message, _ := json.Marshal(response)
-// 				m.Respond(message)
-// 			}
-// 		}
-// 	})
+			// Convert brandID to primitive.ObjectID
+			brandIDObjectID, err := primitive.ObjectIDFromHex(brandID)
+			if err != nil {
+				response := Response{
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusBadRequest,
+						Data:   "BrandID is not valid",
+					},
+				}
+				message, _ := json.Marshal(response)
+				m.Respond(message)
+				return
+			}
 
-// 	if errUser != nil {
-// 		log.Println(errUser)
-// 	}
-// }
+			// Register account (check if username already exists)
+			// check == true when register success
+			checkSuccess, err := auth.RegisterBrand(username, password, name, email, role, phone, isLocked, brandIDObjectID)
+
+			if err != nil {
+				response := Response{
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusBadGateway,
+						Data:   err.Error(),
+					},
+				}
+				message, _ := json.Marshal(response)
+				m.Respond(message)
+			} else {
+				if checkSuccess {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusAccepted,
+							Data:   "Register Success",
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+				} else {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusConflict,
+							Data:   "Username already exists",
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+				}
+			}
+		}
+	})
+
+	if err != nil {
+		log.Println(err)
+	}
+
+}

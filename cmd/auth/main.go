@@ -41,6 +41,7 @@ func main() {
 	api.VerifySubcriber(nc)
 	api.RegisterSubcriber(nc)
 	api.SendOTPSubcriber(nc)
+	api.RegisterBrandBrandSubcriber(nc)
 	// Initialize MongoDB
 
 	fmt.Println("Auth service running at port 3005")

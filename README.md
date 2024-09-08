@@ -36,3 +36,19 @@ This README provides an overview of the auth API and its endpoints.
 	},
 - Response: Email send status.
 ![Placeholder Image](https://github.com/Build-D-An-Ki-n-Truc/auth/blob/main/image/sendEmail.png)
+
+### 4. POST /auth/register/brand?crypted=bool
+- Description: Register a new user.
+- Parameter: crypted=bool (true if password has already been ecrypted with bcrypt, false otherwise)
+- Data:{
+		"username" : username,
+        "password" : password,
+        "name": name,
+        "email": email, 
+        "role":"user",
+        "phone": phone,
+        "isLocked": false,
+		"brandID": brandID (string)
+	},
+- Response: Register status.
+![Placeholder Image](https://github.com/Build-D-An-Ki-n-Truc/auth/blob/main/image/registerBrand.png)

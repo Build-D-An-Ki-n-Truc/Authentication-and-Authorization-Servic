@@ -10,9 +10,6 @@ import (
 
 // CRUD Operation for each collection
 
-// CRUD Operation for Admin Collection
-// CreateAdminUser creates a new admin user
-
 // CRUD Operation for User Collection
 // CreateUser creates a new  user
 func CreateUser(user UserStruct) error {
