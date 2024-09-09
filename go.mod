@@ -4,7 +4,6 @@ go 1.22.4
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
-	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.36.0
 	github.com/sirupsen/logrus v1.9.3
 	go.mongodb.org/mongo-driver v1.16.0

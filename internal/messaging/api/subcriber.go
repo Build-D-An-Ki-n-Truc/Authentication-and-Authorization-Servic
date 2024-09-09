@@ -121,8 +121,16 @@ func LoginSubcriber(nc *nats.Conn) {
 		} else {
 			userMap := request.Data.Payload.Data.(map[string]interface{})
 
-			username := userMap["username"].(string)
-			password := userMap["password"].(string)
+			username, ok := userMap["username"].(string)
+			if !ok {
+				errorCastingResponse(request, "Username should be a string", m)
+				return
+			}
+			password, ok := userMap["password"].(string)
+			if !ok {
+				errorCastingResponse(request, "Password should be a string", m)
+				return
+			}
 
 			// check == true if login success
 			role, check := auth.Login(username, password)
@@ -224,7 +232,11 @@ func VerifySubcriber(nc *nats.Conn) {
 			username := request.Data.Authorization.User.Username
 			role := request.Data.Authorization.User.Role
 
-			roleRequired := request.Data.Payload.Data.([]string)
+			roleRequired, ok := request.Data.Payload.Data.([]string)
+			if !ok {
+				errorCastingResponse(request, "roleRequired should be an array of strings", m)
+				return
+			}
 
 			// Verify token
 			_, err := auth.VerifyRequest(token, username, role, roleRequired)
@@ -305,16 +317,28 @@ func RegisterSubcriber(nc *nats.Conn) {
 		} else {
 			userMap := request.Data.Payload.Data.(map[string]interface{})
 			var crypted bool
-			cryptedParam := request.Data.Params["crypted"].(string)
+			cryptedParam, ok := request.Data.Params["crypted"].(string)
+			if !ok {
+				errorCastingResponse(request, "crypted should be a string", m)
+				return
+			}
 			if cryptedParam == "true" {
 				crypted = true
 			} else {
 				crypted = false
 			}
 
-			username := userMap["username"].(string)
+			username, ok := userMap["username"].(string)
+			if !ok {
+				errorCastingResponse(request, "Username should be a string", m)
+				return
+			}
 
-			password := userMap["password"].(string)
+			password, ok := userMap["password"].(string)
+			if !ok {
+				errorCastingResponse(request, "Password should be a string", m)
+				return
+			}
 			if !crypted {
 				hashedPassword, err := hashing.GenerateHash([]byte(password))
 				if err != nil {
@@ -332,10 +356,30 @@ func RegisterSubcriber(nc *nats.Conn) {
 				password = string(hashedPassword)
 			}
 			// turn this to check if map has key then default value
-			name := convertString(userMap["name"])
-			email := convertString(userMap["email"])
-			role := convertString(userMap["role"])
-			phone := convertString(userMap["phone"])
+			name, ok := userMap["name"].(string)
+			if !ok {
+				errorCastingResponse(request, "Name should be a string", m)
+				return
+			}
+
+			email, ok := userMap["email"].(string)
+			if !ok {
+				errorCastingResponse(request, "Email should be a string", m)
+				return
+			}
+
+			role, ok := userMap["role"].(string)
+			if !ok {
+				errorCastingResponse(request, "Role should be a string", m)
+				return
+			}
+
+			phone, ok := userMap["phone"].(string)
+			if !ok {
+				errorCastingResponse(request, "Phone should be a string", m)
+				return
+			}
+
 			isLocked, ok := userMap["isLocked"].(bool)
 			if !ok {
 				isLocked = false
@@ -420,7 +464,11 @@ func SendOTPSubcriber(nc *nats.Conn) {
 		} else {
 			userMap := request.Data.Payload.Data.(map[string]interface{})
 
-			email := userMap["email"].(string)
+			email, ok := userMap["email"].(string)
+			if !ok {
+				errorCastingResponse(request, "Email should be a string", m)
+				return
+			}
 			//name := userMap["name"].(string)
 			// Send OTP email
 			otp, err := emailSender.SendEmail(email)
@@ -457,14 +505,6 @@ func SendOTPSubcriber(nc *nats.Conn) {
 		log.Println(err)
 	}
 
-}
-
-func convertString(value interface{}) string {
-	convertedValue, ok := value.(string)
-	if !ok {
-		convertedValue = ""
-	}
-	return convertedValue
 }
 
 // Subcriber for create a Brand, Payload should have data:
@@ -509,7 +549,11 @@ func RegisterBrandBrandSubcriber(nc *nats.Conn) {
 			return
 		} else {
 			var crypted bool
-			cryptedParam := request.Data.Params["crypted"].(string)
+			cryptedParam, ok := request.Data.Params["crypted"].(string)
+			if !ok {
+				errorCastingResponse(request, "crypted should be a string", m)
+				return
+			}
 			if cryptedParam == "true" {
 				crypted = true
 			} else {
@@ -518,14 +562,52 @@ func RegisterBrandBrandSubcriber(nc *nats.Conn) {
 
 			userMap := request.Data.Payload.Data.(map[string]interface{})
 
-			username := userMap["username"].(string)
-			password := userMap["password"].(string)
-			name := userMap["name"].(string)
-			email := userMap["email"].(string)
-			role := userMap["role"].(string)
-			phone := userMap["phone"].(string)
-			isLocked := userMap["isLocked"].(bool)
-			brandID := userMap["brandID"].(string)
+			username, ok := userMap["username"].(string)
+			if !ok {
+				errorCastingResponse(request, "Username should be a string", m)
+				return
+			}
+
+			password, ok := userMap["password"].(string)
+			if !ok {
+				errorCastingResponse(request, "Password should be a string", m)
+				return
+			}
+
+			name, ok := userMap["name"].(string)
+			if !ok {
+				errorCastingResponse(request, "Name should be a string", m)
+				return
+			}
+
+			email, ok := userMap["email"].(string)
+			if !ok {
+				errorCastingResponse(request, "Email should be a string", m)
+				return
+			}
+
+			role, ok := userMap["role"].(string)
+			if !ok {
+				errorCastingResponse(request, "Role should be a string", m)
+				return
+			}
+
+			phone, ok := userMap["phone"].(string)
+			if !ok {
+				errorCastingResponse(request, "Phone should be a string", m)
+				return
+			}
+
+			isLocked, ok := userMap["isLocked"].(bool)
+			if !ok {
+				isLocked = false
+			}
+
+			brandID, ok := userMap["brandID"].(string)
+			if !ok {
+				errorCastingResponse(request, "BrandID should be a string", m)
+				return
+			}
 
 			// Convert password to hash
 			if !crypted {
@@ -604,4 +686,18 @@ func RegisterBrandBrandSubcriber(nc *nats.Conn) {
 		log.Println(err)
 	}
 
+}
+
+func errorCastingResponse(request Request, err string, m *nats.Msg) {
+	response := Response{
+		Headers:       request.Data.Headers,
+		Authorization: request.Data.Authorization,
+		Payload: Payload{
+			Type:   []string{"info"},
+			Status: http.StatusBadRequest,
+			Data:   err,
+		},
+	}
+	message, _ := json.Marshal(response)
+	m.Respond(message)
 }
