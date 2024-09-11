@@ -27,3 +27,25 @@ func Login(username string, password string) (string, bool) {
 
 	return "", check
 }
+
+// Check for username and password in corresponding database. Return Role and True if password correct, False otherwise
+func LoginBrand(username string, password string) (string, bool, string) {
+
+	// Get hashed password from database
+	user, err := mongodb.ReadUser(username)
+	if err != nil {
+		logrus.Println("Error reading user from database: ", err)
+		return "", false, ""
+	}
+
+	check := hashing.ComparePassword([]byte(user.Password), []byte(password))
+
+	// Correct password then return user role and true
+	if check {
+		logrus.Println(check)
+		role := user.Role
+		return role, check, user.BrandID.Hex()
+	}
+
+	return "", check, ""
+}

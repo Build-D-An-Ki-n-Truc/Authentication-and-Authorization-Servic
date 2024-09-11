@@ -48,6 +48,7 @@ type Header struct {
 type User struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
+	Brand    string `json:"brand,omitempty"`
 }
 
 type Authorization struct {
@@ -157,6 +158,108 @@ func LoginSubcriber(nc *nats.Conn) {
 							User: User{
 								Username: username,
 								Role:     role,
+							},
+						},
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusOK,
+							Data:   token,
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+				}
+				// Wrong password
+			} else {
+				response := Response{
+					Payload: Payload{
+						Type:   []string{"info"},
+						Status: http.StatusUnauthorized,
+						Data:   "Unauthorized",
+					},
+				}
+				message, _ := json.Marshal(response)
+				m.Respond(message)
+			}
+		}
+	})
+
+	if err != nil {
+		log.Println(err)
+	}
+
+}
+
+// Subcriber for login Brand, Payload should have data:
+//
+//	Payload: Payload{
+//		data:   {
+//			"username": "username",
+//			"password": "password",
+//		},
+//	},
+//
+// auth/loginBrand POST
+func LoginBrandSubcriber(nc *nats.Conn) {
+	subject := createSubscriptionString("loginBrand", "POST", "auth")
+	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
+		var request Request
+		// parsing message to Request format
+		unmarshalErr := json.Unmarshal(m.Data, &request)
+		if unmarshalErr != nil {
+			logrus.Println(unmarshalErr)
+			response := Response{
+				Headers:       request.Data.Headers,
+				Authorization: request.Data.Authorization,
+				Payload: Payload{
+					Type:   []string{"info"},
+					Status: http.StatusBadRequest,
+					Data:   "Wrong format",
+				},
+			}
+			message, _ := json.Marshal(response)
+			m.Respond(message)
+			return
+		} else {
+			userMap := request.Data.Payload.Data.(map[string]interface{})
+
+			username, ok := userMap["username"].(string)
+			if !ok {
+				errorCastingResponse(request, "Username should be a string", m)
+				return
+			}
+			password, ok := userMap["password"].(string)
+			if !ok {
+				errorCastingResponse(request, "Password should be a string", m)
+				return
+			}
+
+			// check == true if login success
+			role, check, brandID := auth.LoginBrand(username, password)
+
+			if check {
+				// Create a token
+				token, err := jwtFunc.GenerateToken(username, role)
+				if err != nil {
+					response := Response{
+						Payload: Payload{
+							Type:   []string{"info"},
+							Status: http.StatusInternalServerError,
+							Data:   "Error:" + err.Error(),
+						},
+					}
+					message, _ := json.Marshal(response)
+					m.Respond(message)
+				} else {
+					response := Response{
+						Headers: Header{
+							Authorization: "Bearer " + token,
+						},
+						Authorization: Authorization{
+							User: User{
+								Username: username,
+								Role:     role,
+								Brand:    brandID,
 							},
 						},
 						Payload: Payload{
