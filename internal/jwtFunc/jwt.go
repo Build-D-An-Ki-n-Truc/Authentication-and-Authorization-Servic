@@ -41,6 +41,35 @@ func GenerateToken(username string, role string) (string, error) {
 	return tokenString, nil
 }
 
+// generateTokenBrand generates a JWT for the given username and role.
+func GenerateTokenBrand(username string, role string, brand string) (string, error) {
+
+	// Define the claim
+	claim := jwt.MapClaims{
+		"username": username,
+		"role":     role,
+		"brand":    brand,
+		"exp":      time.Now().Add(time.Hour * 1).Unix(),
+	}
+
+	// Create the token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
+
+	// Sign the token
+	hmacSecret, err := base64.StdEncoding.DecodeString(CFG.Secret)
+	if err != nil {
+		log.Panic("Error decoding Base64 string:", err)
+	}
+	tokenString, err := token.SignedString(hmacSecret)
+
+	if err != nil {
+		log.Println("Error creating token: ", err)
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
 // ExtractToken extract claims from the given JWT token string.
 func ExtractToken(tokenString string) (jwt.MapClaims, error) {
 	// Parse the token

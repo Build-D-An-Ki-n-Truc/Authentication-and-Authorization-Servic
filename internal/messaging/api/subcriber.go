@@ -239,7 +239,7 @@ func LoginBrandSubcriber(nc *nats.Conn) {
 
 			if check {
 				// Create a token
-				token, err := jwtFunc.GenerateToken(username, role)
+				token, err := jwtFunc.GenerateTokenBrand(username, role, brandID)
 				if err != nil {
 					response := Response{
 						Payload: Payload{
@@ -265,7 +265,7 @@ func LoginBrandSubcriber(nc *nats.Conn) {
 						Payload: Payload{
 							Type:   []string{"info"},
 							Status: http.StatusOK,
-							Data:   token,
+							Data:   brandID,
 						},
 					}
 					message, _ := json.Marshal(response)

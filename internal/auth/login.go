@@ -4,6 +4,7 @@ import (
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/db/mongodb"
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/hashing"
 	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Check for username and password in corresponding database. Return Role and True if password correct, False otherwise
@@ -44,7 +45,10 @@ func LoginBrand(username string, password string) (string, bool, string) {
 	if check {
 		logrus.Println(check)
 		role := user.Role
-		return role, check, user.BrandID.Hex()
+		if user.BrandID != primitive.NilObjectID {
+			return role, check, user.BrandID.Hex()
+		}
+		return role, check, ""
 	}
 
 	return "", check, ""

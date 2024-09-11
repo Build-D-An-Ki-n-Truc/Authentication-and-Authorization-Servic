@@ -38,6 +38,7 @@ func main() {
 
 	// Subcribe to each service
 	api.LoginSubcriber(nc)
+	api.LoginBrandSubcriber(nc)
 	api.VerifySubcriber(nc)
 	api.RegisterSubcriber(nc)
 	api.SendOTPSubcriber(nc)
