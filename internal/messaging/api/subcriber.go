@@ -11,6 +11,7 @@ import (
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/hashing"
 	"github.com/Build-D-An-Ki-n-Truc/auth/internal/jwtFunc"
 	"github.com/nats-io/nats.go"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -98,12 +99,13 @@ func createSubscriptionString(endpoint, method, service string) string {
 //	},
 //
 // auth/login POST
-func LoginSubcriber(nc *nats.Conn) {
+func LoginSubcriber(nc *nats.Conn, counter *prometheus.CounterVec) {
 	subject := createSubscriptionString("login", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
 		unmarshalErr := json.Unmarshal(m.Data, &request)
+		counter.WithLabelValues("login").Inc()
 		if unmarshalErr != nil {
 			logrus.Println(unmarshalErr)
 			response := Response{
@@ -207,11 +209,12 @@ func LoginSubcriber(nc *nats.Conn) {
 //	},
 //
 // ["roleRequired"] Ex: ["admin", "user","brand"]
-func VerifySubcriber(nc *nats.Conn) {
+func VerifySubcriber(nc *nats.Conn, counter *prometheus.CounterVec) {
 	subject := createSubscriptionString("verify", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
+		counter.WithLabelValues("verify").Inc()
 		unmarshalErr := json.Unmarshal(m.Data, &request)
 		if unmarshalErr != nil {
 			logrus.Println(unmarshalErr)
@@ -294,10 +297,11 @@ func VerifySubcriber(nc *nats.Conn) {
 //		},
 //
 // auth/register/user?crypted=boolean POST
-func RegisterSubcriber(nc *nats.Conn) {
+func RegisterSubcriber(nc *nats.Conn, counter *prometheus.CounterVec) {
 	subject := createSubscriptionString("register/user", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
+		counter.WithLabelValues("register").Inc()
 		// parsing message to Request format
 		unmarshalErr := json.Unmarshal(m.Data, &request)
 		if unmarshalErr != nil {
@@ -441,11 +445,12 @@ func RegisterSubcriber(nc *nats.Conn) {
 //
 // auth/sendOTP POST
 // this will return a OTP if success and error if failed
-func SendOTPSubcriber(nc *nats.Conn) {
+func SendOTPSubcriber(nc *nats.Conn, counter *prometheus.CounterVec) {
 	subject := createSubscriptionString("sendOTP", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
+		counter.WithLabelValues("sendOTP").Inc()
 		unmarshalErr := json.Unmarshal(m.Data, &request)
 		if unmarshalErr != nil {
 			logrus.Println(unmarshalErr)
@@ -527,11 +532,12 @@ func SendOTPSubcriber(nc *nats.Conn) {
 //		},
 //
 // auth/register/brand?crypted=bool POST	-> create a Brand User
-func RegisterBrandBrandSubcriber(nc *nats.Conn) {
+func RegisterBrandBrandSubcriber(nc *nats.Conn, counter *prometheus.CounterVec) {
 	subject := createSubscriptionString("register/brand", "POST", "auth")
 	_, err := nc.Subscribe(subject, func(m *nats.Msg) {
 		var request Request
 		// parsing message to Request format
+		counter.WithLabelValues("registerBrand").Inc()
 		unmarshalErr := json.Unmarshal(m.Data, &request)
 		if unmarshalErr != nil {
 			logrus.Println(unmarshalErr)
